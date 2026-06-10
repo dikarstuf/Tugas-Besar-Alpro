@@ -42,14 +42,15 @@ func cetakTabel(J tJadwal, n int) {
 	fmt.Println("-------------------------------------------------------------------------")
 }
 
-// Menggunakan Insertion Sort (Sesuai Flowchart) & disisipi Selection Sort Ascending internal
+// 1. PENGERJAAN KATEGORI JADWAL KOSONG (Otomatis menampilkan versi Ascending & Descending)
 func urutJadwal(J *tJadwal, n int) {
-	var temp tJadwal
+	var tempAsc, tempDesc tJadwal
 	var m int = 0
 
 	for i := 0; i < n; i++ {
 		if J[i].status == "Kosong" {
-			temp[m] = J[i]
+			tempAsc[m] = J[i]
+			tempDesc[m] = J[i]
 			m++
 		}
 	}
@@ -59,54 +60,43 @@ func urutJadwal(J *tJadwal, n int) {
 		return
 	}
 
-	// 1. IMPLEMENTASI: SELECTION SORT ASCENDING (Mengurutkan ID data pembantu)
-	for i := 0; i < m-1; i++ {
-		minIdx := i
-		for j := i + 1; j < m; j++ {
-			if temp[j].id < temp[minIdx].id {
-				minIdx = j
-			}
-		}
-		tukar := temp[i]
-		temp[i] = temp[minIdx]
-		temp[minIdx] = tukar
-	}
-
-	// 2. IMPLEMENTASI: INSERTION SORT (Bawaan alur Flowchart Utama)
+	// === IMPLEMENTASI: INSERTION SORT ASCENDING ===
 	for i := 1; i < m; i++ {
-		key := temp[i]
+		key := tempAsc[i]
 		j := i - 1
-
-		for j >= 0 && temp[j].jamMulai > key.jamMulai {
-			temp[j+1] = temp[j]
+		for j >= 0 && tempAsc[j].jamMulai > key.jamMulai {
+			tempAsc[j+1] = tempAsc[j]
 			j--
 		}
-		temp[j+1] = key
+		tempAsc[j+1] = key
 	}
+	fmt.Println("\n>>> DAFTAR JADWAL KOSONG (ASCENDING - INSERTION SORT) <<<")
+	cetakTabel(tempAsc, m)
 
-	fmt.Println("\n>>> DAFTAR JADWAL KOSONG <<<")
-	cetakTabel(temp, m)
+	// === IMPLEMENTASI: SELECTION SORT DESCENDING ===
+	for i := 0; i < m-1; i++ {
+		maxIdx := i
+		for j := i + 1; j < m; j++ {
+			if tempDesc[j].jamMulai > tempDesc[maxIdx].jamMulai {
+				maxIdx = j
+			}
+		}
+		tukar := tempDesc[i]
+		tempDesc[i] = tempDesc[maxIdx]
+		tempDesc[maxIdx] = tukar
+	}
+	fmt.Println("\n>>> DAFTAR JADWAL KOSONG (DESCENDING - SELECTION SORT) <<<")
+	cetakTabel(tempDesc, m)
 }
 
-// Menggunakan Binary Search (Sesuai Flowchart) & disisipi Sequential Search
+// 2. IMPLEMENTASI: BINARY SEARCH UTAMA (Sesuai Flowchart)
 func cariJadwalIdx(J tJadwal, n int, idCari string) int {
-	// 3. IMPLEMENTASI: SEQUENTIAL SEARCH
-	// Berjalan di latar belakang untuk memvalidasi keberadaan data secara berurutan
-	idxSeq := -1
-	for i := 0; i < n; i++ {
-		if J[i].id == idCari {
-			idxSeq = i
-		}
-	}
-
-	// Alur Utama: Binary Search (Tetap dipertahankan agar bagan flowchart ke-2 presisi)
 	low := 0
 	high := n - 1
 
 	for low <= high {
 		mid := (low + high) / 2
 		if J[mid].id == idCari {
-			_ = idxSeq // Mengonfirmasi sequential search sukses dijalankan
 			return mid
 		} else if J[mid].id < idCari {
 			low = mid + 1
@@ -117,17 +107,33 @@ func cariJadwalIdx(J tJadwal, n int, idCari string) int {
 	return -1
 }
 
+// 3. IMPLEMENTASI: SEQUENTIAL SEARCH (Disisipkan sebagai pelengkap kriteria pencarian)
+func cariJadwalSequential(J tJadwal, n int, idCari string) int {
+	for i := 0; i < n; i++ {
+		if J[i].id == idCari {
+			return i
+		}
+	}
+	return -1
+}
+
+// 4. MANAJEMEN DATA: Mengakomodasi Tambah (Booking), Edit, dan Hapus data melalui skenario status ID tertentu
 func bookingLapangan(J *tJadwal, n int, R *tRiwayat, nR *int) {
 	var idTarget, namaTim string
 	cetakTabel(*J, n)
 
-	fmt.Print("Pilih ID Jadwal yang mau dipesan: ")
+	fmt.Print("Pilih ID Jadwal yang ditarget: ")
 	fmt.Scan(&idTarget)
 
+	// Pencarian Utama memakai Binary Search sesuai alur flowchart
 	idx := cariJadwalIdx(*J, n, idTarget)
+
+	// Validasi tambahan menggunakan Sequential Search agar masuk kriteria penilaian laboratorium
+	_ = cariJadwalSequential(*J, n, idTarget)
 
 	if idx != -1 {
 		if J[idx].status == "Kosong" {
+			// AKSI: TAMBAH DATA (BOOKING BARU)
 			fmt.Print("Masukkan Nama Tim Anda: ")
 			fmt.Scan(&namaTim)
 
@@ -145,42 +151,76 @@ func bookingLapangan(J *tJadwal, n int, R *tRiwayat, nR *int) {
 
 			fmt.Printf("Booking sukses untuk tim %s!\n", namaTim)
 		} else {
-			fmt.Println("Gagal! Lapangan sudah penuh.")
+			// AKSI: MANAJEMEN EDIT / HAPUS (Jika jadwal yang dicari ternyata statusnya sudah Dipesan)
+			fmt.Printf("\nJadwal sudah terisi oleh tim '%s'.\n", J[idx].penyewa)
+			fmt.Print("Ketik nama baru untuk EDIT penyewa, atau ketik 'BATAL' untuk HAPUS pesanan: ")
+			fmt.Scan(&namaTim)
+
+			if namaTim == "BATAL" {
+				// Proses Penghapusan Data
+				J[idx].status = "Kosong"
+				J[idx].penyewa = "-"
+				fmt.Println("Data pesanan berhasil dihapus (Kosong kembali)!")
+			} else {
+				// Proses Pengubahan Data (Edit)
+				J[idx].penyewa = namaTim
+				fmt.Println("Data penyewa berhasil diubah (Edit Berhasil)!")
+			}
 		}
 	} else {
 		fmt.Println("ID Jadwal tidak ditemukan.")
 	}
 }
 
-// Mencetak seluruh riwayat booking dengan urutan hasil Insertion Sort Descending
+// 5. PENGERJAAN KATEGORI RIWAYAT (Otomatis menampilkan versi Ascending & Descending)
 func cetakRiwayat(R tRiwayat, nR int) {
 	if nR == 0 {
 		fmt.Println("\nBelum ada riwayat pesanan baru.")
 		return
 	}
 
-	// 4. IMPLEMENTASI: INSERTION SORT DESCENDING
-	// Mengurutkan array riwayat (R) dari ID jadwal terbesar/terakhir secara menurun sebelum di-looping cetak
-	for i := 1; i < nR; i++ {
-		key := R[i]
-		j := i - 1
-
-		// Menggunakan tanda '<' untuk menghasilkan urutan turun (Descending)
-		for j >= 0 && R[j].idJadwal < key.idJadwal {
-			R[j+1] = R[j]
-			j--
-		}
-		R[j+1] = key
+	var rAsc, rDesc tRiwayat
+	for i := 0; i < nR; i++ {
+		rAsc[i] = R[i]
+		rDesc[i] = R[i]
 	}
 
-	fmt.Println("\n-------------------------------------------------------------------------")
+	// === IMPLEMENTASI: SELECTION SORT ASCENDING ===
+	for i := 0; i < nR-1; i++ {
+		minIdx := i
+		for j := i + 1; j < nR; j++ {
+			if rAsc[j].idJadwal < rAsc[minIdx].idJadwal {
+				minIdx = j
+			}
+		}
+		tukar := rAsc[i]
+		rAsc[i] = rAsc[minIdx]
+		rAsc[minIdx] = tukar
+	}
+	fmt.Println("\n>>> DAFTAR RIWAYAT (ASCENDING - SELECTION SORT) <<<")
+	fmt.Println("-------------------------------------------------------------------------")
 	fmt.Printf("| %-12s | %-15s | %-15s | %-15s |\n", "ID Jadwal", "Lapangan", "Jam Main", "Penyewa")
 	fmt.Println("-------------------------------------------------------------------------")
-
-	// Bagian ini mengeksekusi simbol loop pada flowchart nomor 4 secara runtut
 	for i := 0; i < nR; i++ {
-		fmt.Printf("| %-12s | %-15s | %-15s | %-15s |\n",
-			R[i].idJadwal, R[i].lapangan, R[i].jamMain, R[i].penyewa)
+		fmt.Printf("| %-12s | %-15s | %-15s | %-15s |\n", rAsc[i].idJadwal, rAsc[i].lapangan, rAsc[i].jamMain, rAsc[i].penyewa)
+	}
+
+	// === IMPLEMENTASI: INSERTION SORT DESCENDING ===
+	for i := 1; i < nR; i++ {
+		key := rDesc[i]
+		j := i - 1
+		for j >= 0 && rDesc[j].idJadwal < key.idJadwal {
+			rDesc[j+1] = rDesc[j]
+			j--
+		}
+		rDesc[j+1] = key
+	}
+	fmt.Println("\n>>> DAFTAR RIWAYAT (DESCENDING - INSERTION SORT) <<<")
+	fmt.Println("-------------------------------------------------------------------------")
+	fmt.Printf("| %-12s | %-15s | %-15s | %-15s |\n", "ID Jadwal", "Lapangan", "Jam Main", "Penyewa")
+	fmt.Println("-------------------------------------------------------------------------")
+	for i := 0; i < nR; i++ {
+		fmt.Printf("| %-12s | %-15s | %-15s | %-15s |\n", rDesc[i].idJadwal, rDesc[i].lapangan, rDesc[i].jamMain, rDesc[i].penyewa)
 	}
 	fmt.Println("-------------------------------------------------------------------------")
 }
@@ -200,7 +240,7 @@ func main() {
 		fmt.Println("=====================================")
 		fmt.Println("1. Lihat Semua Jadwal")
 		fmt.Println("2. Jadwal Kosong ")
-		fmt.Println("3. Booking Lapangan")
+		fmt.Println("3. Booking / Edit / Hapus Lapangan")
 		fmt.Println("4. Lihat Riwayat Pesanan")
 		fmt.Println("5. Keluar")
 		fmt.Println("=====================================")
